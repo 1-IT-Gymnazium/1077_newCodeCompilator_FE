@@ -57,6 +57,7 @@ import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
 import { loadPyodide } from '../services/pyodide'
 
 export default {
@@ -300,14 +301,134 @@ export default {
       
       const langExtension = lang === 'python' ? python() : javascript()
       
+      // Vlastní konfigurace našeptávače
+      const autocompleteConfig = autocompletion({
+        override: [
+          // Základní našeptávač pro Python
+          async (context) => {
+            if (lang !== 'python') return null
+            
+            const word = context.matchBefore(/\w*/)
+            if (!word || word.from === word.to && !context.explicit) return null
+            
+            // Základní Python klíčová slova a funkce
+            const pythonKeywords = [
+              { label: 'def', type: 'keyword', info: '' },
+              { label: 'class', type: 'keyword', info: '' },
+              { label: 'if', type: 'keyword', info: '' },
+              { label: 'else', type: 'keyword', info: '' },
+              { label: 'elif', type: 'keyword', info: '' },
+              { label: 'for', type: 'keyword', info: '' },
+              { label: 'while', type: 'keyword', info: '' },
+              { label: 'try', type: 'keyword', info: '' },
+              { label: 'except', type: 'keyword', info: '' },
+              { label: 'finally', type: 'keyword', info: '' },
+              { label: 'import', type: 'keyword', info: '' },
+              { label: 'from', type: 'keyword', info: '' },
+              { label: 'return', type: 'keyword', info: '' },
+              { label: 'print', type: 'function', info: '' },
+              { label: 'len', type: 'function', info: '' },
+              { label: 'range', type: 'function', info: '' },
+              { label: 'str', type: 'function', info: '' },
+              { label: 'int', type: 'function', info: '' },
+              { label: 'float', type: 'function', info: '' },
+              { label: 'list', type: 'function', info: '' },
+              { label: 'dict', type: 'function', info: '' },
+              { label: 'set', type: 'function', info: '' },
+              { label: 'tuple', type: 'function', info: '' },
+              { label: 'input', type: 'function', info: '' },
+              { label: 'open', type: 'function', info: '' },
+              { label: 'sum', type: 'function', info: '' },
+              { label: 'min', type: 'function', info: '' },
+              { label: 'max', type: 'function', info: '' },
+              { label: 'sorted', type: 'function', info: '' },
+              { label: 'map', type: 'function', info: '' },
+              { label: 'filter', type: 'function', info: '' },
+              { label: 'lambda', type: 'keyword', info: '' },
+              { label: 'True', type: 'constant', info: '' },
+              { label: 'False', type: 'constant', info: '' },
+              { label: 'None', type: 'constant', info: '' }
+            ]
+            
+            return {
+              from: word.from,
+              options: pythonKeywords.filter(item =>
+                item.label.toLowerCase().startsWith(word.text.toLowerCase())
+              ),
+              span: /^\w*$/
+            }
+          },
+          
+          // Základní našeptávač pro JavaScript
+          async (context) => {
+            if (lang !== 'javascript') return null
+            
+            const word = context.matchBefore(/\w*/)
+            if (!word || word.from === word.to && !context.explicit) return null
+            
+            // Základní JavaScript klíčová slova a funkce
+            const jsKeywords = [
+              { label: 'function', type: 'keyword', info: '' },
+              { label: 'class', type: 'keyword', info: '' },
+              { label: 'if', type: 'keyword', info: '' },
+              { label: 'else', type: 'keyword', info: '' },
+              { label: 'for', type: 'keyword', info: '' },
+              { label: 'while', type: 'keyword', info: '' },
+              { label: 'try', type: 'keyword', info: '' },
+              { label: 'catch', type: 'keyword', info: '' },
+              { label: 'finally', type: 'keyword', info: '' },
+              { label: 'return', type: 'keyword', info: '' },
+              { label: 'const', type: 'keyword', info: '' },
+              { label: 'let', type: 'keyword', info: '' },
+              { label: 'var', type: 'keyword', info: '' },
+              { label: 'import', type: 'keyword', info: '' },
+              { label: 'export', type: 'keyword', info: '' },
+              { label: 'console.log', type: 'function', info: '' },
+              { label: 'document.getElementById', type: 'function', info: '' },
+              { label: 'document.querySelector', type: 'function', info: '' },
+              { label: 'document.createElement', type: 'function', info: '' },
+              { label: 'addEventListener', type: 'method', info: '' },
+              { label: 'setTimeout', type: 'function', info: '' },
+              { label: 'setInterval', type: 'function', info: '' },
+              { label: 'fetch', type: 'function', info: '' },
+              { label: 'JSON.parse', type: 'function', info: '' },
+              { label: 'JSON.stringify', type: 'function', info: '' },
+              { label: 'Array.map', type: 'method', info: '' },
+              { label: 'Array.filter', type: 'method', info: '' },
+              { label: 'Array.reduce', type: 'method', info: '' },
+              { label: 'Array.forEach', type: 'method', info: '' },
+              { label: 'String.split', type: 'method', info: '' },
+              { label: 'String.replace', type: 'method', info: '' },
+              { label: 'Math.random', type: 'function', info: '' },
+              { label: 'Math.floor', type: 'function', info: '' },
+              { label: 'Math.ceil', type: 'function', info: '' },
+              { label: 'Math.round', type: 'function', info: '' },
+              { label: 'true', type: 'constant', info: '' },
+              { label: 'false', type: 'constant', info: '' },
+              { label: 'null', type: 'constant', info: '' },
+              { label: 'undefined', type: 'constant', info: '' }
+            ]
+            
+            return {
+              from: word.from,
+              options: jsKeywords.filter(item =>
+                item.label.toLowerCase().startsWith(word.text.toLowerCase())
+              ),
+              span: /^\w*$/
+            }
+          }
+        ]
+      })
+      
       const startState = EditorState.create({
         doc: code,
         extensions: [
-          keymap.of([indentWithTab, ...defaultKeymap]),
+          keymap.of([indentWithTab, ...defaultKeymap, ...completionKeymap]),
           langExtension,
           oneDark,
           EditorView.lineWrapping,
-          EditorState.tabSize.of(4)
+          EditorState.tabSize.of(4),
+          autocompleteConfig
         ]
       })
       
@@ -395,5 +516,69 @@ export default {
 .cm-matchingBracket {
   background-color: rgba(73, 130, 73, 0.5);
   color: #fff !important;
+}
+
+/* Styly pro našeptávač */
+.cm-tooltip {
+  border: 1px solid #3a3f4b;
+  background-color: #282c34;
+  color: #abb2bf;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cm-tooltip-autocomplete {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.cm-tooltip-autocomplete ul {
+  padding: 0;
+  margin: 0;
+}
+
+.cm-tooltip-autocomplete li {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.cm-tooltip-autocomplete li:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.cm-tooltip-autocomplete li[aria-selected] {
+  background-color: rgba(73, 130, 73, 0.3);
+  color: #fff;
+}
+
+.cm-completionIcon {
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+.cm-completionIcon-keyword {
+  color: #c678dd;
+}
+
+.cm-completionIcon-function {
+  color: #61afef;
+}
+
+.cm-completionIcon-method {
+  color: #56b6c2;
+}
+
+.cm-completionIcon-constant {
+  color: #e06c75;
+}
+
+.cm-completionLabel {
+  font-weight: 500;
+}
+
+.cm-completionDetail {
+  margin-left: 8px;
+  font-style: italic;
+  color: #5c6370;
 }
 </style>
