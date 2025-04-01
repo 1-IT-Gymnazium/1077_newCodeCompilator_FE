@@ -1,249 +1,320 @@
 <template>
-  <q-card class="task-form">
-    <q-card-section>
-      <h5 class="q-my-none">{{ isEditing ? 'Upravit úlohu' : 'Přidat novou úlohu' }}</h5>
-      
-      <q-form @submit.prevent="saveTask" class="q-mt-md">
-        <q-input
-          v-model="task.title"
-          label="Název úlohy"
-          outlined
-          :rules="[val => !!val || 'Název je povinný']"
-          class="q-mb-md"
-        />
-        
-        <q-input
-          v-model="task.description"
-          label="Popis úlohy"
-          type="textarea"
-          outlined
-          autogrow
-          class="q-mb-md"
-        />
-        
-        <div class="row q-col-gutter-sm q-mb-md">
-          <div class="col-12 col-md-6">
-            <q-select
-              v-model="task.language"
-              :options="[
-                { label: 'Python', value: 'python' },
-                { label: 'JavaScript', value: 'javascript' }
-              ]"
-              label="Programovací jazyk"
-              outlined
-              emit-value
-              map-options
-            />
-          </div>
-        </div>
-        
-        <q-card bordered class="q-mb-md">
+  <q-page padding>
+    <div class="row q-col-gutter-md">
+      <!-- Seznam úloh -->
+      <div class="col-12 col-md-3">
+        <q-card class="task-list-card">
           <q-card-section>
-            <div class="text-subtitle2">Výchozí kód</div>
-            <q-input
-              v-model="task.initialCode"
-              type="textarea"
-              outlined
-              autogrow
-              class="q-mt-sm"
-              :label="`Kód v jazyce ${task.language}`"
-            />
-          </q-card-section>
-        </q-card>
-        
-        <q-card bordered class="q-mb-md">
-          <q-card-section>
-            <div class="row items-center">
+            <div class="row items-center q-mb-md">
               <div class="col">
-                <div class="text-subtitle2">Testy</div>
+                <h5 class="q-my-none">Seznam úloh</h5>
               </div>
               <div class="col-auto">
                 <q-btn
-                  color="primary"
-                  icon="add"
+                  flat
                   round
+                  icon="refresh"
                   size="sm"
-                  @click="addTest"
-                  :disable="task.tests.length >= 10"
+                  color="primary"
+                  @click="loadTasks"
+                  :loading="loading"
                 />
               </div>
             </div>
             
-            <div v-if="task.tests.length === 0" class="text-center q-pa-md text-grey">
-              Klikněte na tlačítko + pro přidání testu
-            </div>
-            
-            <q-list separator>
-              <q-expansion-item
-                v-for="(test, index) in task.tests"
-                :key="index"
-                :label="`Test ${index + 1}: ${test.name || 'Nepojmenovaný test'}`"
-                header-class="test-header"
-                expand-icon-class="text-primary"
-                class="q-mt-sm"
+            <q-list separator bordered>
+              <q-item
+                v-for="task in tasks"
+                :key="task.id"
+                clickable
+                @click="loadTask(task.id)"
+                :active="selectedTaskId === task.id"
+                active-class="bg-primary text-white"
               >
-                <q-card>
-                  <q-card-section>
-                    <div class="row q-col-gutter-sm">
-                      <div class="col-12">
-                        <q-input
-                          v-model="test.name"
-                          label="Název testu"
-                          outlined
-                          dense
-                        />
-                      </div>
-                      <div class="col-12">
-                        <q-input
-                          v-model="test.code"
-                          label="Kód testu"
-                          type="textarea"
-                          outlined
-                          autogrow
-                          dense
-                          hint="Např. add(2, 3)"
-                        />
-                      </div>
-                      <div class="col-12">
-                        <q-input
-                          v-model="test.expected"
-                          label="Očekávaný výsledek"
-                          outlined
-                          dense
-                          hint="Např. 5"
-                        />
-                      </div>
-                    </div>
-                  </q-card-section>
-                  <q-card-actions align="right">
-                    <q-btn
-                      flat
-                      round
-                      icon="delete"
-                      size="sm"
-                      color="negative"
-                      @click="removeTest(index)"
-                    />
-                  </q-card-actions>
-                </q-card>
-              </q-expansion-item>
+                <q-item-section>
+                  <q-item-label>{{ task.title }}</q-item-label>
+                  <q-item-label caption lines="1" :class="selectedTaskId === task.id ? 'text-white' : ''">
+                    {{ task.description.substring(0, 30) }}{{ task.description.length > 30 ? '...' : '' }}
+                  </q-item-label>
+                </q-item-section>
+                
+                <q-item-section side>
+                  <q-badge :color="task.language === 'python' ? 'blue' : 'orange'">
+                    {{ task.language }}
+                  </q-badge>
+                </q-item-section>
+              </q-item>
+              
+              <q-item v-if="tasks.length === 0">
+                <q-item-section>
+                  <q-item-label class="text-center q-py-md text-grey">
+                    Žádné úlohy k dispozici
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
             </q-list>
+            
+            <div class="q-mt-md">
+              <q-btn
+                to="/tasks"
+                color="primary"
+                label="Správa úloh"
+                icon="settings"
+                no-caps
+                class="full-width"
+              />
+            </div>
           </q-card-section>
         </q-card>
-        
-        <div class="row q-mt-lg">
-          <q-btn
-            type="submit"
-            color="primary"
-            :label="isEditing ? 'Uložit změny' : 'Přidat úlohu'"
-            :loading="saving"
-          />
-          <q-btn
-            flat
-            label="Zrušit"
-            class="q-ml-sm"
-            @click="cancel"
-            :disable="saving"
-          />
+      </div>
+      
+      <!-- Obsah úlohy a editor -->
+      <template v-if="currentTask">
+        <!-- Popis úlohy (vlevo) -->
+        <div class="col-12 col-md-3">
+          <q-card class="task-info">
+            <q-card-section>
+              <h5 class="q-my-none">{{ currentTask.title }}</h5>
+              
+              <q-separator class="q-my-md" />
+              
+              <div class="task-description">
+                {{ currentTask.description }}
+              </div>
+              
+              <div class="q-mt-sm">
+                <q-badge :color="currentTask.language === 'python' ? 'blue' : 'orange'">
+                  {{ currentTask.language }}
+                </q-badge>
+                <q-badge color="green" class="q-ml-xs" v-if="currentTask.tests && currentTask.tests.length">
+                  {{ currentTask.tests.length }} testů
+                </q-badge>
+              </div>
+            </q-card-section>
+          </q-card>
+          
+          <!-- Výsledky testů -->
+          <q-card v-if="testResults.length > 0" class="q-mt-md test-results">
+            <q-card-section>
+              <h6 class="q-my-none">Výsledky testů</h6>
+              
+              <q-list separator>
+                <q-item v-for="(test, index) in testResults" :key="index">
+                  <q-item-section avatar>
+                    <q-icon
+                      :name="test.passed ? 'check_circle' : 'error'"
+                      :color="test.passed ? 'positive' : 'negative'"
+                      size="md"
+                    />
+                  </q-item-section>
+                  
+                  <q-item-section>
+                    <q-item-label>{{ test.name }}</q-item-label>
+                    <q-item-label caption v-if="!test.passed && test.error">
+                      Chyba: {{ test.error }}
+                    </q-item-label>
+                    <q-item-label caption v-else-if="!test.passed">
+                      Očekáváno: {{ test.expected }}<br>
+                      Obdrženo: {{ test.result }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-card-section>
+          </q-card>
         </div>
-      </q-form>
-    </q-card-section>
-  </q-card>
+        
+        <!-- Editor kódu (vpravo) -->
+        <div class="col-12 col-md-6">
+          <div class="editor-wrapper">
+            <CodeEditor
+              :title="currentTask.title"
+              :initial-code="currentTask.initialCode"
+              :initial-language="currentTask.language"
+              :tests="currentTask.tests"
+              @output="updateOutput"
+              @test-results="handleTestResults"
+            />
+          </div>
+          
+          <!-- Konzole -->
+          <div class="q-mt-md">
+            <Console :output="consoleOutput" @clear="clearConsole" />
+          </div>
+        </div>
+      </template>
+      
+      <!-- Prázdný stav - žádná úloha není vybrána -->
+      <div class="col-12 col-md-9" v-if="!currentTask">
+        <q-card class="full-height flex flex-center">
+          <q-card-section class="text-center">
+            <q-icon name="code" size="100px" color="primary" />
+            <h5>Vyberte úlohu ze seznamu</h5>
+            <p class="text-grey-8">
+              Klikněte na úlohu v seznamu vlevo pro zahájení programování
+            </p>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+  </q-page>
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import CodeEditor from '../components/CodeEditor.vue'
+import Console from '../components/Console.vue'
+import { getTasks, getTask } from '../services/api'
+import { useQuasar } from 'quasar'
 
 export default {
-  name: 'TaskManager',
-  props: {
-    editTask: {
-      type: Object,
-      default: null
-    }
+  name: 'EditorPage',
+  components: {
+    CodeEditor,
+    Console
   },
   
-  emits: ['save', 'cancel'],
-  
-  setup(props, { emit }) {
-    const defaultTask = {
-      title: '',
-      description: '',
-      language: 'python',
-      initialCode: '# Vložte svůj kód zde\n',
-      tests: []
+  setup() {
+    const $q = useQuasar()
+    const tasks = ref([])
+    const selectedTaskId = ref(null)
+    const currentTask = ref(null)
+    const consoleOutput = ref('// Konzolový výstup se zobrazí zde\n')
+    const testResults = ref([])
+    const loading = ref(false)
+    
+    // Načteme seznam úloh
+    const loadTasks = async () => {
+      loading.value = true
+      try {
+        tasks.value = await getTasks()
+        
+        // Pokud máme úlohy a žádná není vybrána, vybereme první
+        if (tasks.value.length > 0 && !selectedTaskId.value) {
+          selectedTaskId.value = tasks.value[0].id
+          await loadTask(selectedTaskId.value)
+        }
+      } catch (error) {
+        console.error('Chyba při načítání úloh:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Nepodařilo se načíst úlohy. Zkontrolujte, zda běží backend.',
+          icon: 'error',
+          position: 'top'
+        })
+      } finally {
+        loading.value = false
+      }
     }
     
-    const task = ref({...defaultTask})
-    const saving = ref(false)
-    
-    // Sledujeme změny v editované úloze
-    const isEditing = computed(() => props.editTask !== null)
-    
-    // Sledujeme změny v props.editTask
-    watch(() => props.editTask, (newTask) => {
-      if (newTask) {
-        task.value = { ...newTask }
-      } else {
-        task.value = { ...defaultTask }
+    // Načteme konkrétní úlohu
+    const loadTask = async (taskId) => {
+      if (!taskId) {
+        currentTask.value = null
+        return
       }
-    }, { immediate: true })
+      
+      selectedTaskId.value = taskId
+      loading.value = true
+      
+      try {
+        currentTask.value = await getTask(taskId)
+        clearConsole()
+      } catch (error) {
+        console.error('Chyba při načítání úlohy:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Nepodařilo se načíst úlohu.',
+          icon: 'error',
+          position: 'top'
+        })
+      } finally {
+        loading.value = false
+      }
+    }
     
-    // Přidáme nový test
-    const addTest = () => {
-      task.value.tests.push({
-        name: `Test ${task.value.tests.length + 1}`,
-        code: '',
-        expected: ''
+    // Aktualizujeme výstup konzole
+    const updateOutput = (output) => {
+      consoleOutput.value += output + '\n'
+    }
+    
+    // Vyčistíme konzoli
+    const clearConsole = () => {
+      consoleOutput.value = '// Konzolový výstup se zobrazí zde\n'
+    }
+    
+    // Zpracujeme výsledky testů
+    const handleTestResults = (results) => {
+      testResults.value = results
+      
+      // Zobrazíme notifikaci s výsledky
+      const passedCount = results.filter(r => r.passed).length
+      const totalCount = results.length
+      
+      $q.notify({
+        color: passedCount === totalCount ? 'positive' : 'warning',
+        message: `Testy: ${passedCount}/${totalCount} úspěšných`,
+        icon: passedCount === totalCount ? 'check_circle' : 'warning',
+        position: 'top-right',
+        timeout: 2000
       })
     }
     
-    // Odebereme test
-    const removeTest = (index) => {
-      task.value.tests.splice(index, 1)
-    }
-    
-    // Uložíme úlohu
-    const saveTask = async () => {
-      saving.value = true
-      try {
-        await emit('save', { ...task.value })
-        if (!isEditing.value) {
-          task.value = { ...defaultTask }
-        }
-      } finally {
-        saving.value = false
-      }
-    }
-    
-    // Zrušíme editaci
-    const cancel = () => {
-      emit('cancel')
-    }
+    // Načteme úlohy při inicializaci komponenty
+    onMounted(() => {
+      loadTasks()
+    })
     
     return {
-      task,
-      isEditing,
-      saving,
-      addTest,
-      removeTest,
-      saveTask,
-      cancel
+      tasks,
+      selectedTaskId,
+      currentTask,
+      consoleOutput,
+      testResults,
+      loading,
+      loadTasks,
+      loadTask,
+      updateOutput,
+      clearConsole,
+      handleTestResults
     }
   }
 }
 </script>
 
 <style scoped>
-.task-form {
-  width: 100%;
+.task-list-card,
+.task-info {
+  height: 100%;
 }
 
-.test-header {
-  font-weight: 500;
+.task-description {
+  white-space: pre-line;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.test-item {
-  margin-bottom: 16px;
+.editor-wrapper {
+  height: 100%;
+  min-height: 400px;
+}
+
+.test-results {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.full-height {
+  height: 100%;
+  min-height: 400px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  align-items: center;
+  justify-content: center;
 }
 </style>
